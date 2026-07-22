@@ -1,0 +1,38 @@
+# 指明这是根目录的 EditorConfig 文件，防止向上层目录继续查找其他 .editorconfig 文件
+root = true
+
+# ========== 所有文件的默认设置 ==========
+[*]
+# 文件编码为 UTF-8
+charset = utf-8
+
+# 使用 Unix 风格的换行符（LF）；Windows 是 CRLF，建议统一为 LF 以避免跨平台冲突
+end_of_line = lf
+
+# 文件末尾强制保留一个换行符，符合 POSIX 标准，也方便 diff 工具比较
+insert_final_newline = true
+
+# 使用空格缩进（另一种是 tab）
+indent_style = tab
+
+# 缩进大小为 2（常用于前端项目，Python 项目通常为 4）
+indent_size = 4
+
+# 删除每一行行尾多余的空格（如空格或 tab），可保持文件整洁
+trim_trailing_whitespace = true
+
+
+# ========== Markdown 文件特殊设置 ==========
+[*.md]
+# 不删除 Markdown 文件行尾空格（因为有些语法依赖空格换行）
+trim_trailing_whitespace = false
+
+# ========== 制表符文件（如 Makefile）特殊设置 ==========
+[Makefile]
+# Makefile 中缩进必须使用 tab，否则无法编译
+indent_style = tab
+
+# ========== HTML/CSS/JS/TS/Vue 等前端文件设置 ==========
+[*.{html,css,js,jsx,ts,tsx,vue}]
+indent_style = tab
+indent_size = 4
