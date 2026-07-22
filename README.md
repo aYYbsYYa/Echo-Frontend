@@ -1,42 +1,36 @@
-# Echo-Frontend
+# Yeve Echo Frontend
 
-This template should help get you started developing with Vue 3 in Vite.
+Yeve Echo 是一个匿名文字漂流社区。它不提供好友、关注或聊天关系，只让一段文字以漂流瓶或纸飞机的形式，偶然抵达愿意阅读的人。
 
-## Recommended IDE Setup
+## 技术栈
 
-[VS Code](https://code.visualstudio.com/) + [Vue (Official)](https://marketplace.visualstudio.com/items?itemName=Vue.volar) (and disable Vetur).
+- Vue 3
+- Vite
+- TypeScript
+- Vue Router
+- Pinia
 
-## Recommended Browser Setup
+## 安装
 
-- Chromium-based browsers (Chrome, Edge, Brave, etc.):
-  - [Vue.js devtools](https://chromewebstore.google.com/detail/vuejs-devtools/nhdogjmejiglipccpnnnanhbledajbpd)
-  - [Turn on Custom Object Formatter in Chrome DevTools](http://bit.ly/object-formatters)
-- Firefox:
-  - [Vue.js devtools](https://addons.mozilla.org/en-US/firefox/addon/vue-js-devtools/)
-  - [Turn on Custom Object Formatter in Firefox DevTools](https://fxdx.dev/firefox-devtools-custom-object-formatters/)
-
-## Type Support for `.vue` Imports in TS
-
-TypeScript cannot handle type information for `.vue` imports by default, so we replace the `tsc` CLI with `vue-tsc` for type checking. In editors, we need [Volar](https://marketplace.visualstudio.com/items?itemName=Vue.volar) to make the TypeScript language service aware of `.vue` types.
-
-## Customize configuration
-
-See [Vite Configuration Reference](https://vite.dev/config/).
-
-## Project Setup
-
-```sh
+```bash
 npm install
 ```
 
-### Compile and Hot-Reload for Development
+## 环境变量
 
-```sh
-npm run dev
+复制 `.env.example` 为 `.env`：
+
+```env
+VITE_API_BASE_URL=http://localhost:3000/api
 ```
 
-### Type-Check, Compile and Minify for Production
+所有后端请求均从 `VITE_API_BASE_URL` 读取，代码中不包含服务端地址。
 
-```sh
+## 开发和构建
+
+```bash
+npm run dev
 npm run build
 ```
+
+首次打开时，用户填写昵称、出生日期与性别。浏览器生成匿名 ID 并写入 LocalStorage；此资料在 Demo 中不可编辑。之后可发布漂流瓶或纸飞机、随机或 Echo 模式捞取内容，以及查看自己的发布档案。

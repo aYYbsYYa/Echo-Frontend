@@ -1,11 +1,16 @@
-<script setup lang="ts"></script>
+<script setup lang="ts">
+import { onBeforeMount } from 'vue'
+
+import { useUserStore } from '@/stores/user'
+
+const user = useUserStore()
+onBeforeMount(user.hydrate)
+</script>
 
 <template>
-  <h1>You did it!</h1>
-  <p>
-    Visit <a href="https://vuejs.org/" target="_blank" rel="noopener">vuejs.org</a> to read the
-    documentation
-  </p>
+  <RouterView v-if="user.ready" />
 </template>
 
-<style scoped></style>
+<style>
+@import './assets/main.css';
+</style>
