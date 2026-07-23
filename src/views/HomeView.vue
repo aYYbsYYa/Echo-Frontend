@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { ref } from 'vue'
-import { useRouter } from 'vue-router'
 
 import { echoApi } from '@/api/echo'
 import AppHeader from '@/components/AppHeader.vue'
@@ -8,10 +7,9 @@ import ComposePanel from '@/components/ComposePanel.vue'
 import DiscoveryCard from '@/components/DiscoveryCard.vue'
 import RingSoundPanel from '@/components/RingSoundPanel.vue'
 import { useUserStore } from '@/stores/user'
-import type { EchoItem, EchoKind } from '@/types'
+import type { EchoItem } from '@/types'
 
 const user = useUserStore()
-const router = useRouter()
 const item = ref<EchoItem | null>(null)
 const loading = ref(false)
 const selectedKind = ref<'bottle' | 'plane'>('bottle')
@@ -64,10 +62,6 @@ function onRingConfirm() {
   }
   ringSendToken.value += 1
 }
-
-function openDiscovered(id: string, kind: EchoKind) {
-  router.push({ name: kind === 'bottle' ? 'bottle-detail' : 'plane-detail', params: { id } })
-}
 </script>
 
 <template>
@@ -109,7 +103,6 @@ function openDiscovered(id: string, kind: EchoKind) {
           :item="item"
           :loading="loading"
           :empty-message="emptyMessage"
-          @open="openDiscovered"
         />
       </Transition>
     </section>
