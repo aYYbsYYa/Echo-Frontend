@@ -2,7 +2,7 @@
 import { computed } from 'vue'
 
 import type { EchoItem, EchoKind } from '@/types'
-import { formatDriftDuration } from '@/utils/time'
+import { formatDriftDuration, formatFlightDuration } from '@/utils/time'
 
 const props = defineProps<{ item: EchoItem | null; loading: boolean; emptyMessage: string }>()
 const emit = defineEmits<{ open: [id: string, kind: EchoKind] }>()
@@ -10,7 +10,7 @@ const displayTime = computed(() => {
   if (!props.item) return ''
   return props.item.type === 'bottle'
     ? formatDriftDuration(props.item.created_at)
-    : new Intl.DateTimeFormat('zh-CN', { dateStyle: 'medium' }).format(new Date(props.item.created_at))
+    : formatFlightDuration(props.item.created_at)
 })
 </script>
 

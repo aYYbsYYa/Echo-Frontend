@@ -21,3 +21,12 @@ export function formatDriftDuration(value: string): string {
   const days = Math.floor(elapsed / DAY)
   return days < 1 ? '已漂流了不到 1 天' : `已漂流了 ${days} 天`
 }
+
+export function formatFlightDuration(value: string): string {
+  const timestamp = Date.parse(value)
+  if (Number.isNaN(timestamp)) return '飞行时间未知'
+
+  const elapsed = Math.max(0, Date.now() - timestamp)
+  const days = Math.floor(elapsed / DAY)
+  return days < 1 ? '已飞行了不到 1 天' : `已飞行了 ${days} 天`
+}

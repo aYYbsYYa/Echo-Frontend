@@ -51,8 +51,18 @@ export const echoApi = {
       method: 'POST',
       body: JSON.stringify({ user_id: userId }),
     }),
+  togglePlaneLike: (id: string, userId: string) =>
+    request<{ liked: boolean }>(`/planes/${id}/likes`, {
+      method: 'POST',
+      body: JSON.stringify({ user_id: userId }),
+    }),
   comment: (id: string, userId: string, content: string) =>
     request<{ sent: boolean }>(`/bottles/${id}/comments`, {
+      method: 'POST',
+      body: JSON.stringify({ user_id: userId, content }),
+    }),
+  planeComment: (id: string, userId: string, content: string) =>
+    request<{ sent: boolean }>(`/planes/${id}/comments`, {
       method: 'POST',
       body: JSON.stringify({ user_id: userId, content }),
     }),
