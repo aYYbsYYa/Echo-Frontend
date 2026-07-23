@@ -1,10 +1,11 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, watch } from 'vue'
 
 import { echoApi } from '@/api/echo'
 import { useUserStore } from '@/stores/user'
 import type { EchoKind } from '@/types'
 
+const props = defineProps<{ voiceDraft?: string; autoSendToken?: number }>()
 const emit = defineEmits<{ published: [kind: EchoKind, message: string] }>()
 const user = useUserStore()
 const kind = ref<EchoKind>('bottle')
@@ -12,8 +13,19 @@ const content = ref('')
 const status = ref('')
 const sending = ref(false)
 
+watch(() => props.voiceDraft, (draft) => {
+  if (typeof draft === 'string' && draft.trim()) content.value = draft
+})
+
+watch(() => props.autoSendToken, (token, previous) => {
+  if (token !== undefined && token !== previous) {
+    kind.value = 'plane'
+    void publish()
+  }
+})
+
 async function publish() {
-  if (!content.value.trim() || !user.profile) return
+  if (sending.value || !content.value.trim() || !user.profile) return
   sending.value = true
   status.value = ''
   try {

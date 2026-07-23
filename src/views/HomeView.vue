@@ -6,6 +6,7 @@ import { echoApi } from '@/api/echo'
 import AppHeader from '@/components/AppHeader.vue'
 import ComposePanel from '@/components/ComposePanel.vue'
 import DiscoveryCard from '@/components/DiscoveryCard.vue'
+import RingSoundPanel from '@/components/RingSoundPanel.vue'
 import { useUserStore } from '@/stores/user'
 import type { EchoItem, EchoKind } from '@/types'
 
@@ -16,6 +17,8 @@ const loading = ref(false)
 const selectedKind = ref<'bottle' | 'plane'>('bottle')
 const notice = ref('把一句话放进海里，或者等一句话向你靠岸。')
 const emptyMessage = ref('还没有捞到其他人的漂流物。')
+const voiceDraft = ref('')
+const ringSendToken = ref(0)
 
 function selectKind(kind: 'bottle' | 'plane') {
   selectedKind.value = kind
@@ -45,7 +48,21 @@ async function discover() {
 }
 
 function onPublished(_kind: 'bottle' | 'plane', message: string) {
+  if (_kind === 'plane') voiceDraft.value = ''
   notice.value = message
+}
+
+function onRingTranscribed(text: string) {
+  voiceDraft.value = text
+  notice.value = '戒指语音已转成文字，请检查后发送。'
+}
+
+function onRingConfirm() {
+  if (!voiceDraft.value.trim()) {
+    notice.value = '还没有可发送的戒指语音文字。'
+    return
+  }
+  ringSendToken.value += 1
 }
 
 function openDiscovered(id: string, kind: EchoKind) {
@@ -64,7 +81,8 @@ function openDiscovered(id: string, kind: EchoKind) {
         <h1>让文字自己<br />去遇见世界。</h1>
         <p>{{ notice }}</p>
       </div>
-      <ComposePanel @published="onPublished" />
+      <ComposePanel :voice-draft="voiceDraft" :auto-send-token="ringSendToken" @published="onPublished" />
+      <RingSoundPanel @transcribed="onRingTranscribed" @confirm="onRingConfirm" />
     </section>
 
     <section class="discovery-zone">

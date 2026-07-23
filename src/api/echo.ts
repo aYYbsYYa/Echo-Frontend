@@ -66,4 +66,15 @@ export const echoApi = {
       method: 'POST',
       body: JSON.stringify({ user_id: userId, content }),
     }),
+  transcribeRingAudio: async (audio: Uint8Array): Promise<string> => {
+    if (!baseUrl) throw new Error('未配置 VITE_API_BASE_URL。')
+    const form = new FormData()
+    const bytes = new ArrayBuffer(audio.byteLength)
+    new Uint8Array(bytes).set(audio)
+    form.append('file', new Blob([bytes], { type: 'application/octet-stream' }), 'ring-recording.bin')
+    const response = await fetch(`${baseUrl}/audio/transcriptions`, { method: 'POST', body: form })
+    const body = await response.json()
+    if (!response.ok) throw new Error(body.error?.message || '语音转文字失败。')
+    return body.data.text as string
+  },
 }
