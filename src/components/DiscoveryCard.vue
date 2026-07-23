@@ -1,11 +1,11 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 
-import type { EchoItem } from '@/types'
+import type { EchoItem, EchoKind } from '@/types'
 import { formatDriftDuration } from '@/utils/time'
 
 const props = defineProps<{ item: EchoItem | null; loading: boolean; emptyMessage: string }>()
-const emit = defineEmits<{ open: [id: string] }>()
+const emit = defineEmits<{ open: [id: string, kind: EchoKind] }>()
 const displayTime = computed(() => {
   if (!props.item) return ''
   return props.item.type === 'bottle'
@@ -24,7 +24,7 @@ const displayTime = computed(() => {
         <span class="author-line"><b>{{ item.avatar }}</b>{{ item.nickname }} · {{ item.region }}</span>
         <span>{{ displayTime }}</span>
       </footer>
-      <button v-if="item.type === 'bottle'" class="text-button" type="button" @click="emit('open', item.id)">停下来读一会</button>
+      <button class="text-button" type="button" @click="emit('open', item.id, item.type)">停下来读一会</button>
     </template>
     <div v-else class="quiet-state">{{ emptyMessage }}</div>
   </article>
