@@ -77,15 +77,23 @@ function openDiscovered(id: string, kind: EchoKind) {
       <div class="horizon" aria-hidden="true"></div>
       <div class="floating-bottle" aria-hidden="true"><i></i></div>
       <div class="hero-copy">
-        <p class="eyebrow">不必被认识</p>
-        <h1>让文字自己<br />去遇见世界。</h1>
-        <p>{{ notice }}</p>
+        <p class="eyebrow">不必被认识 · 只需被听见</p>
+        <h1>让文字自己<br /><em>去遇见世界。</em></h1>
+        <p>把片刻投向陌生的海。没有关系链，没有催促，只有一次恰好的停留。</p>
+        <div class="hero-status" role="status" aria-live="polite"><span aria-hidden="true"></span>{{ notice }}</div>
       </div>
-      <ComposePanel :voice-draft="voiceDraft" :auto-send-token="ringSendToken" @published="onPublished" />
+      <div class="compose-stack">
+        <p class="section-index"><span>01</span> 写下此刻</p>
+        <ComposePanel :voice-draft="voiceDraft" :auto-send-token="ringSendToken" @published="onPublished" />
+      </div>
       <RingSoundPanel @transcribed="onRingTranscribed" @confirm="onRingConfirm" />
     </section>
 
-    <section class="discovery-zone">
+    <section class="discovery-zone" aria-labelledby="discover-heading">
+      <div class="discover-heading">
+        <p class="section-index"><span>02</span> 等待相遇</p>
+        <div><h2 id="discover-heading">从远处来的回声</h2><p>每次只遇见一段，读完再决定是否停留。</p></div>
+      </div>
       <div class="discover-controls">
         <div class="segment-control" role="tablist" aria-label="接收类型">
           <button :class="{ active: selectedKind === 'bottle' }" type="button" @click="selectKind('bottle')">捞漂流瓶</button>
@@ -95,7 +103,15 @@ function openDiscovered(id: string, kind: EchoKind) {
           {{ loading ? '正在靠岸' : selectedKind === 'bottle' ? '捞起一个' : '等一阵风' }}
         </button>
       </div>
-      <DiscoveryCard :item="item" :loading="loading" :empty-message="emptyMessage" @open="openDiscovered" />
+      <Transition :name="selectedKind === 'bottle' ? 'surface-rise' : 'surface-flight'" mode="out-in">
+        <DiscoveryCard
+          :key="`${selectedKind}-${loading ? 'loading' : item?.id || 'empty'}`"
+          :item="item"
+          :loading="loading"
+          :empty-message="emptyMessage"
+          @open="openDiscovered"
+        />
+      </Transition>
     </section>
   </main>
 </template>

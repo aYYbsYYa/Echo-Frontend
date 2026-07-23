@@ -155,12 +155,12 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <section class="ring-panel" aria-label="戒指语音输入">
+  <section class="ring-panel" :class="{ 'is-connected': connected, 'is-listening': listening, 'is-busy': busy }" aria-label="戒指语音输入">
     <div class="ring-panel-heading">
-      <span class="ring-indicator" :class="{ connected }"></span>
+      <span class="ring-indicator" :class="{ connected, listening, busy }" aria-hidden="true"></span>
       <div>
-        <strong>戒指输入</strong>
-        <p>{{ supported ? (connected ? '蓝牙已连接' : '支持 Web Bluetooth') : '当前浏览器不支持 Web Bluetooth' }}</p>
+        <strong>Yeve Ring</strong>
+        <p>{{ supported ? (listening ? '正在接收语音' : busy ? '正在处理' : connected ? '设备在线' : '等待蓝牙连接') : '当前浏览器不支持 Web Bluetooth' }}</p>
       </div>
     </div>
     <div class="ring-panel-actions">
@@ -169,7 +169,7 @@ onBeforeUnmount(() => {
       <button v-if="connected" type="button" :disabled="busy" @click="armRecording">{{ listening ? '等待录音中' : '戒指录音' }}</button>
       <button v-if="connected" type="button" :disabled="busy || motionEnabled" @click="enableMotion">{{ motionEnabled ? '动作识别中' : '开启投掷识别' }}</button>
     </div>
-    <p v-if="status" class="ring-panel-status">{{ status }}</p>
-    <p v-if="connected" class="ring-panel-hint">双击可确认发布；动作识别需要先单击戒指切换到手势模式。</p>
+    <p v-if="status" class="ring-panel-status" role="status" aria-live="polite">{{ status }}</p>
+    <div v-if="connected" class="ring-panel-hint"><span>双击确认</span><span>长按录音</span><span>甩动发送</span></div>
   </section>
 </template>

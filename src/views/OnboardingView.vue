@@ -40,7 +40,8 @@ async function submit() {
         <label>出生日期<input v-model="form.birthday" type="date" /></label>
         <label>性别<select v-model="form.gender"><option value="" disabled>请选择</option><option value="female">女性</option><option value="male">男性</option><option value="prefer_not_to_say">不标注</option></select></label>
         <label>你此刻在<input v-model="form.region" maxlength="30" placeholder="城市或一段模糊的地方" /></label>
-        <button class="primary-button" :disabled="saving" type="submit">{{ saving ? '正在留下印记' : '开始漂流' }}</button>
+        <button class="primary-button" :disabled="saving" type="submit">{{ saving ? '正在留下印记' : '留下印记，开始漂流' }}</button>
+        <p class="privacy-note">资料仅保存在你的匿名档案中，不会公开展示完整生日。</p>
         <p v-if="error" class="form-error" role="alert">{{ error }}</p>
       </form>
     </section>

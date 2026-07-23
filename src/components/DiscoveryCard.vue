@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 
+import { resolveMediaUrl } from '@/api/echo'
 import type { EchoItem, EchoKind } from '@/types'
 import { formatDriftDuration, formatFlightDuration } from '@/utils/time'
 
@@ -19,12 +20,13 @@ const displayTime = computed(() => {
     <div v-if="loading" class="quiet-state">正在等一段文字靠岸...</div>
     <template v-else-if="item">
       <span class="object-mark" aria-hidden="true">{{ item.type === 'bottle' ? '◒' : '⌁' }}</span>
+      <img v-if="item.image_url" class="discovery-image" :src="resolveMediaUrl(item.image_url)" alt="随文字一起漂来的图片" />
       <p class="echo-content">{{ item.content }}</p>
       <footer>
         <span class="author-line"><b>{{ item.avatar }}</b>{{ item.nickname }} · {{ item.region }}</span>
         <span>{{ displayTime }}</span>
       </footer>
-      <button class="text-button" type="button" @click="emit('open', item.id, item.type)">停下来读一会</button>
+      <button class="text-button" type="button" @click="emit('open', item.id, item.type)">停下来读一会 <span aria-hidden="true">→</span></button>
     </template>
     <div v-else class="quiet-state">{{ emptyMessage }}</div>
   </article>

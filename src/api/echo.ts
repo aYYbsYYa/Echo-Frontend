@@ -2,6 +2,13 @@ import type { EchoItem, UserProfile } from '@/types'
 
 const baseUrl = import.meta.env.VITE_API_BASE_URL?.replace(/\/$/, '')
 
+export function resolveMediaUrl(path?: string | null): string {
+  if (!path) return ''
+  if (/^https?:\/\//i.test(path)) return path
+  const origin = baseUrl ? new URL(baseUrl, window.location.origin).origin : window.location.origin
+  return `${origin}${path.startsWith('/') ? '' : '/'}${path}`
+}
+
 interface ApiEnvelope<T> {
   data: T
   message?: string
@@ -12,9 +19,13 @@ async function requestEnvelope<T>(path: string, options: RequestInit = {}): Prom
     throw new Error('未配置 VITE_API_BASE_URL。')
   }
 
+  const headers = new Headers(options.headers)
+  if (!(options.body instanceof FormData) && !headers.has('Content-Type')) {
+    headers.set('Content-Type', 'application/json')
+  }
   const response = await fetch(`${baseUrl}${path}`, {
     ...options,
-    headers: { 'Content-Type': 'application/json', ...options.headers },
+    headers,
   })
   const body = await response.json()
   if (!response.ok) {
@@ -31,11 +42,20 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
 export const echoApi = {
   createUser: (profile: UserProfile) =>
     request<UserProfile>('/users', { method: 'POST', body: JSON.stringify(profile) }),
-  publish: (kind: 'bottle' | 'plane', userId: string, content: string) =>
-    request<EchoItem>(`/${kind === 'bottle' ? 'bottles' : 'planes'}`, {
-      method: 'POST',
-      body: JSON.stringify({ user_id: userId, content }),
-    }),
+  publish: (kind: 'bottle' | 'plane', userId: string, content: string, image?: File | null) => {
+    const path = `/${kind === 'bottle' ? 'bottles' : 'planes'}`
+    if (!image) {
+      return request<EchoItem>(path, {
+        method: 'POST',
+        body: JSON.stringify({ user_id: userId, content }),
+      })
+    }
+    const form = new FormData()
+    form.append('user_id', userId)
+    form.append('content', content)
+    form.append('image', image)
+    return request<EchoItem>(path, { method: 'POST', body: form, headers: {} })
+  },
   discoverBottle: (userId: string) =>
     requestEnvelope<EchoItem | null>(`/bottles/discover?user_id=${encodeURIComponent(userId)}`),
   discoverPlane: (userId: string) =>
