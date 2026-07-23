@@ -36,7 +36,7 @@ export const useUserStore = defineStore('user', () => {
       ...values,
       nickname,
       id: createId({ ...values, nickname }),
-      avatar: nickname[0],
+      avatar: nickname.slice(0, 1),
     }
     const created = await echoApi.createUser(next)
     profile.value = created

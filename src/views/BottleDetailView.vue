@@ -6,6 +6,7 @@ import { echoApi } from '@/api/echo'
 import AppHeader from '@/components/AppHeader.vue'
 import { useUserStore } from '@/stores/user'
 import type { EchoItem } from '@/types'
+import { formatDriftDuration, formatRelativeTime } from '@/utils/time'
 
 const route = useRoute()
 const router = useRouter()
@@ -57,7 +58,7 @@ onMounted(load)
     <article v-if="item" class="bottle-letter">
       <div class="letter-meta"><span>{{ item.avatar }} {{ item.nickname }}</span><span>{{ item.region }}</span></div>
       <p class="letter-content">{{ item.content }}</p>
-      <p class="letter-date">{{ new Date(item.created_at).toLocaleString('zh-CN') }}</p>
+      <p class="letter-date">{{ formatDriftDuration(item.created_at) }}</p>
       <div v-if="!item.is_author" class="letter-actions">
         <button type="button" :class="{ selected: item.liked }" @click="like">{{ item.liked ? '已留下心意' : '留下心意' }}</button>
         <form @submit.prevent="sendComment"><input v-model="comment" maxlength="500" placeholder="留一句话给作者" /><button :disabled="commenting" type="submit">送出</button></form>
@@ -66,7 +67,14 @@ onMounted(load)
       <div v-else class="author-insight">
         <p>被阅读 {{ item.views }} 次 · 收到 {{ item.likes || 0 }} 次心意</p>
         <blockquote v-if="item.reply">{{ item.reply }}</blockquote>
-        <div v-if="item.comments?.length" class="private-comments"><h2>留给你的话</h2><p v-for="entry in item.comments" :key="entry.id">{{ entry.content }}</p></div>
+        <p v-else class="reply-pending">开发组暂未回信</p>
+        <div v-if="item.comments?.length" class="private-comments">
+          <h2>留给你的话</h2>
+          <div v-for="entry in item.comments" :key="entry.id" class="comment-entry">
+            <p class="comment-meta">来自 {{ entry.nickname }} · {{ formatRelativeTime(entry.created_at) }}</p>
+            <p>{{ entry.content }}</p>
+          </div>
+        </div>
       </div>
     </article>
     <p v-else-if="error" class="form-error">{{ error }}</p>

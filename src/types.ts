@@ -30,5 +30,6 @@ export interface EchoItem {
 export interface EchoComment {
   id: string
   content: string
+  nickname: string
   created_at: string
 }

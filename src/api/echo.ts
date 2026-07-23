@@ -2,7 +2,12 @@ import type { DiscoverMode, EchoItem, UserProfile } from '@/types'
 
 const baseUrl = import.meta.env.VITE_API_BASE_URL?.replace(/\/$/, '')
 
-async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
+interface ApiEnvelope<T> {
+  data: T
+  message?: string
+}
+
+async function requestEnvelope<T>(path: string, options: RequestInit = {}): Promise<ApiEnvelope<T>> {
   if (!baseUrl) {
     throw new Error('未配置 VITE_API_BASE_URL。')
   }
@@ -15,7 +20,12 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   if (!response.ok) {
     throw new Error(body.error?.message || '请求未能完成。')
   }
-  return body.data as T
+  return body as ApiEnvelope<T>
+}
+
+async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
+  const body = await requestEnvelope<T>(path, options)
+  return body.data
 }
 
 export const echoApi = {
@@ -27,9 +37,9 @@ export const echoApi = {
       body: JSON.stringify({ user_id: userId, content }),
     }),
   discoverBottle: (userId: string, mode: DiscoverMode) =>
-    request<EchoItem | null>(`/bottles/discover?user_id=${encodeURIComponent(userId)}&mode=${mode}`),
+    requestEnvelope<EchoItem | null>(`/bottles/discover?user_id=${encodeURIComponent(userId)}&mode=${mode}`),
   discoverPlane: (userId: string) =>
-    request<EchoItem | null>(`/planes/discover?user_id=${encodeURIComponent(userId)}`),
+    requestEnvelope<EchoItem | null>(`/planes/discover?user_id=${encodeURIComponent(userId)}`),
   getBottle: (id: string, userId: string) =>
     request<EchoItem>(`/bottles/${id}?user_id=${encodeURIComponent(userId)}`),
   getMine: (kind: 'bottle' | 'plane', userId: string) =>

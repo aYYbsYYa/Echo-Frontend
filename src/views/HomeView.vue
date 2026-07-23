@@ -16,18 +16,30 @@ const loading = ref(false)
 const selectedKind = ref<'bottle' | 'plane'>('bottle')
 const mode = ref<DiscoverMode>('random')
 const notice = ref('把一句话放进海里，或者等一句话向你靠岸。')
+const emptyMessage = ref('还没有找到其他人的漂流物。')
+
+function selectKind(kind: 'bottle' | 'plane') {
+  selectedKind.value = kind
+  item.value = null
+  emptyMessage.value = kind === 'bottle' ? '还没有找到其他人的漂流物。' : '还没有接到其他人的纸飞机。'
+}
 
 async function discover() {
   if (!user.profile) return
   loading.value = true
   item.value = null
   try {
-    item.value = selectedKind.value === 'bottle'
+    const result = selectedKind.value === 'bottle'
       ? await echoApi.discoverBottle(user.profile.id, mode.value)
       : await echoApi.discoverPlane(user.profile.id)
-    notice.value = item.value ? '' : '此刻没有新的漂流物，海面仍在等候。'
+    item.value = result.data
+    emptyMessage.value = result.message || (
+      selectedKind.value === 'bottle' ? '海面暂时安静，稍后再来。' : '风里还没有新的纸飞机。'
+    )
+    notice.value = item.value ? '' : emptyMessage.value
   } catch (error) {
     notice.value = error instanceof Error ? error.message : '暂时无法抵达海面。'
+    emptyMessage.value = notice.value
   } finally {
     loading.value = false
   }
@@ -55,8 +67,8 @@ function onPublished(_kind: 'bottle' | 'plane', message: string) {
     <section class="discovery-zone">
       <div class="discover-controls">
         <div class="segment-control" role="tablist" aria-label="接收类型">
-          <button :class="{ active: selectedKind === 'bottle' }" type="button" @click="selectedKind = 'bottle'">捞漂流瓶</button>
-          <button :class="{ active: selectedKind === 'plane' }" type="button" @click="selectedKind = 'plane'">接纸飞机</button>
+          <button :class="{ active: selectedKind === 'bottle' }" type="button" @click="selectKind('bottle')">捞漂流瓶</button>
+          <button :class="{ active: selectedKind === 'plane' }" type="button" @click="selectKind('plane')">接纸飞机</button>
         </div>
         <div v-if="selectedKind === 'bottle'" class="mode-picker">
           <label><input v-model="mode" value="random" type="radio" /> 随机</label>
@@ -66,7 +78,7 @@ function onPublished(_kind: 'bottle' | 'plane', message: string) {
           {{ loading ? '正在靠岸' : selectedKind === 'bottle' ? '捞起一只' : '等一阵风' }}
         </button>
       </div>
-      <DiscoveryCard :item="item" :loading="loading" :empty-message="notice" @open="router.push({ name: 'bottle-detail', params: { id: $event } })" />
+      <DiscoveryCard :item="item" :loading="loading" :empty-message="emptyMessage" @open="router.push({ name: 'bottle-detail', params: { id: $event } })" />
     </section>
   </main>
 </template>
