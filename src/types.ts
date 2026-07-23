@@ -1,5 +1,4 @@
 export type EchoKind = 'bottle' | 'plane'
-export type DiscoverMode = 'random' | 'echo'
 
 export interface UserProfile {
   id: string

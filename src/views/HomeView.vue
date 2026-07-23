@@ -7,21 +7,20 @@ import AppHeader from '@/components/AppHeader.vue'
 import ComposePanel from '@/components/ComposePanel.vue'
 import DiscoveryCard from '@/components/DiscoveryCard.vue'
 import { useUserStore } from '@/stores/user'
-import type { DiscoverMode, EchoItem, EchoKind } from '@/types'
+import type { EchoItem, EchoKind } from '@/types'
 
 const user = useUserStore()
 const router = useRouter()
 const item = ref<EchoItem | null>(null)
 const loading = ref(false)
 const selectedKind = ref<'bottle' | 'plane'>('bottle')
-const mode = ref<DiscoverMode>('random')
 const notice = ref('把一句话放进海里，或者等一句话向你靠岸。')
-const emptyMessage = ref('还没有找到其他人的漂流物。')
+const emptyMessage = ref('还没有捞到其他人的漂流物。')
 
 function selectKind(kind: 'bottle' | 'plane') {
   selectedKind.value = kind
   item.value = null
-  emptyMessage.value = kind === 'bottle' ? '还没有找到其他人的漂流物。' : '还没有接到其他人的纸飞机。'
+  emptyMessage.value = kind === 'bottle' ? '还没有捞到其他人的漂流物。' : '还没有接到其他人的纸飞机。'
 }
 
 async function discover() {
@@ -30,7 +29,7 @@ async function discover() {
   item.value = null
   try {
     const result = selectedKind.value === 'bottle'
-      ? await echoApi.discoverBottle(user.profile.id, mode.value)
+      ? await echoApi.discoverBottle(user.profile.id)
       : await echoApi.discoverPlane(user.profile.id)
     item.value = result.data
     emptyMessage.value = result.message || (
@@ -74,12 +73,8 @@ function openDiscovered(id: string, kind: EchoKind) {
           <button :class="{ active: selectedKind === 'bottle' }" type="button" @click="selectKind('bottle')">捞漂流瓶</button>
           <button :class="{ active: selectedKind === 'plane' }" type="button" @click="selectKind('plane')">接纸飞机</button>
         </div>
-        <div v-if="selectedKind === 'bottle'" class="mode-picker">
-          <label><input v-model="mode" value="random" type="radio" /> 随机</label>
-          <label><input v-model="mode" value="echo" type="radio" /> Echo</label>
-        </div>
         <button class="discover-button" type="button" :disabled="loading" @click="discover">
-          {{ loading ? '正在靠岸' : selectedKind === 'bottle' ? '捞起一只' : '等一阵风' }}
+          {{ loading ? '正在靠岸' : selectedKind === 'bottle' ? '捞起一个' : '等一阵风' }}
         </button>
       </div>
       <DiscoveryCard :item="item" :loading="loading" :empty-message="emptyMessage" @open="openDiscovered" />

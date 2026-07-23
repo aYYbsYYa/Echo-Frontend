@@ -1,4 +1,4 @@
-import type { DiscoverMode, EchoItem, UserProfile } from '@/types'
+import type { EchoItem, UserProfile } from '@/types'
 
 const baseUrl = import.meta.env.VITE_API_BASE_URL?.replace(/\/$/, '')
 
@@ -36,8 +36,8 @@ export const echoApi = {
       method: 'POST',
       body: JSON.stringify({ user_id: userId, content }),
     }),
-  discoverBottle: (userId: string, mode: DiscoverMode) =>
-    requestEnvelope<EchoItem | null>(`/bottles/discover?user_id=${encodeURIComponent(userId)}&mode=${mode}`),
+  discoverBottle: (userId: string) =>
+    requestEnvelope<EchoItem | null>(`/bottles/discover?user_id=${encodeURIComponent(userId)}`),
   discoverPlane: (userId: string) =>
     requestEnvelope<EchoItem | null>(`/planes/discover?user_id=${encodeURIComponent(userId)}`),
   getBottle: (id: string, userId: string) =>
