@@ -7,7 +7,7 @@ import AppHeader from '@/components/AppHeader.vue'
 import ComposePanel from '@/components/ComposePanel.vue'
 import DiscoveryCard from '@/components/DiscoveryCard.vue'
 import { useUserStore } from '@/stores/user'
-import type { DiscoverMode, EchoItem } from '@/types'
+import type { DiscoverMode, EchoItem, EchoKind } from '@/types'
 
 const user = useUserStore()
 const router = useRouter()
@@ -48,6 +48,10 @@ async function discover() {
 function onPublished(_kind: 'bottle' | 'plane', message: string) {
   notice.value = message
 }
+
+function openDiscovered(id: string, kind: EchoKind) {
+  router.push({ name: kind === 'bottle' ? 'bottle-detail' : 'plane-detail', params: { id } })
+}
 </script>
 
 <template>
@@ -78,7 +82,7 @@ function onPublished(_kind: 'bottle' | 'plane', message: string) {
           {{ loading ? '正在靠岸' : selectedKind === 'bottle' ? '捞起一只' : '等一阵风' }}
         </button>
       </div>
-      <DiscoveryCard :item="item" :loading="loading" :empty-message="emptyMessage" @open="router.push({ name: 'bottle-detail', params: { id: $event } })" />
+      <DiscoveryCard :item="item" :loading="loading" :empty-message="emptyMessage" @open="openDiscovered" />
     </section>
   </main>
 </template>
