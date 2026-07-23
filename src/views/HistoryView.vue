@@ -41,7 +41,7 @@ onMounted(async () => {
     <p v-if="error" class="form-error archive-error">{{ error }}</p>
     <div class="archive-grid">
       <HistoryList title="我的漂流瓶" :items="bottles" :loading="loading" @open="router.push({ name: 'bottle-detail', params: { id: $event } })" />
-      <HistoryList title="我的纸飞机" :items="planes" :loading="loading" />
+      <HistoryList title="我的纸飞机" :items="planes" :loading="loading" @open="router.push({ name: 'plane-detail', params: { id: $event } })" />
     </div>
   </main>
 </template>

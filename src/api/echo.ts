@@ -42,6 +42,8 @@ export const echoApi = {
     requestEnvelope<EchoItem | null>(`/planes/discover?user_id=${encodeURIComponent(userId)}`),
   getBottle: (id: string, userId: string) =>
     request<EchoItem>(`/bottles/${id}?user_id=${encodeURIComponent(userId)}`),
+  getPlane: (id: string, userId: string) =>
+    request<EchoItem>(`/planes/${id}?user_id=${encodeURIComponent(userId)}`),
   getMine: (kind: 'bottle' | 'plane', userId: string) =>
     request<EchoItem[]>(`/${kind === 'bottle' ? 'bottles' : 'planes'}/mine/${encodeURIComponent(userId)}`),
   toggleLike: (id: string, userId: string) =>
