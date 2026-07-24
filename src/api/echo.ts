@@ -1,4 +1,10 @@
-import type { EchoItem, UserProfile } from '@/types'
+import type {
+  EchoItem,
+  SoulDialogue,
+  SoulMatchResult,
+  SoulProfile,
+  UserProfile,
+} from '@/types'
 
 const baseUrl = import.meta.env.VITE_API_BASE_URL?.replace(/\/$/, '')
 
@@ -65,6 +71,23 @@ export const echoApi = {
     request<{ sent: boolean }>(`/planes/${id}/comments`, {
       method: 'POST',
       body: JSON.stringify({ user_id: userId, content }),
+    }),
+  getSoulProfile: (userId = 'yeve', refresh = false) =>
+    request<SoulProfile>(
+      `/agent/profile?user_id=${encodeURIComponent(userId)}${refresh ? '&refresh=true' : ''}`,
+    ),
+  matchSoulAgents: (userId = 'yeve', limit = 3) =>
+    request<SoulMatchResult>('/agent/match', {
+      method: 'POST',
+      body: JSON.stringify({ user_id: userId, limit }),
+    }),
+  runSoulDialogue: (userId = 'yeve', targetUserId?: string) =>
+    request<SoulDialogue>('/agent/dialogue', {
+      method: 'POST',
+      body: JSON.stringify({
+        user_id: userId,
+        ...(targetUserId ? { target_user_id: targetUserId } : {}),
+      }),
     }),
   transcribeRingAudio: async (audio: Uint8Array): Promise<string> => {
     if (!baseUrl) throw new Error('未配置 VITE_API_BASE_URL。')

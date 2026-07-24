@@ -5,6 +5,7 @@ import HistoryView from '@/views/HistoryView.vue'
 import HomeView from '@/views/HomeView.vue'
 import OnboardingView from '@/views/OnboardingView.vue'
 import PlaneDetailView from '@/views/PlaneDetailView.vue'
+import SoulEchoView from '@/views/SoulEchoView.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -14,6 +15,7 @@ const router = createRouter({
     { path: '/history', name: 'history', component: HistoryView },
     { path: '/bottle/:id', name: 'bottle-detail', component: BottleDetailView },
     { path: '/plane/:id', name: 'plane-detail', component: PlaneDetailView },
+    { path: '/soul', name: 'soul', component: SoulEchoView },
   ],
 })
 

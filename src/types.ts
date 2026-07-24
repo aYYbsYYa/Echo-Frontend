@@ -32,3 +32,54 @@ export interface EchoComment {
   nickname: string
   created_at: string
 }
+
+export interface SoulPersona {
+  identity: string
+  traits: string[]
+  emotion_pattern: string[]
+  interests: string[]
+  values: string[]
+}
+
+export interface SoulProfile {
+  id: string
+  user_id: string
+  name: string
+  history_count: number
+  persona: SoulPersona
+  communication_style: { tone: string }
+  generated_by: 'ai' | 'demo_fallback' | 'demo_seed'
+  updated_at: string
+}
+
+export interface SoulMatch {
+  user_id: string
+  agent: string
+  score: number
+  reason: string[]
+  preview: string
+}
+
+export interface SoulMatchResult {
+  id: string
+  user_id: string
+  matches: SoulMatch[]
+  created_at: string
+}
+
+export interface SoulDialogueMessage {
+  from: string
+  user_id: string
+  text: string
+}
+
+export interface SoulDialogue {
+  id: string
+  agent_a: string
+  agent_b: string
+  score: number
+  reason: string[]
+  conversation: SoulDialogueMessage[]
+  echo: string
+  created_at: string
+}

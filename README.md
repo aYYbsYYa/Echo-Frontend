@@ -33,4 +33,4 @@ npm run dev
 npm run build
 ```
 
-首次打开时，用户填写昵称、出生日期与性别。浏览器生成匿名 ID 并写入 LocalStorage；此资料在 Demo 中不可编辑。之后可发布漂流瓶或纸飞机、随机或 Echo 模式捞取内容，以及查看自己的发布档案。
+首次打开时，用户填写昵称、出生日期与性别。浏览器生成匿名 ID 并写入 LocalStorage；此资料在 Demo 中不可编辑。之后可发布漂流瓶或纸飞机、完全随机捞取其他用户内容、查看自己的发布档案，以及进入 Soul Echo 页面体验 Agent-to-Agent 灵魂回响 Demo。
