@@ -6,7 +6,7 @@ import { useUserStore } from '@/stores/user'
 
 const route = useRoute()
 const user = useUserStore()
-const title = computed(() => {
+const sectionLabel = computed(() => {
   if (route.name === 'history') return '漂流档案'
   if (route.name === 'soul') return 'Soul Echo'
   return 'Yeve Echo'

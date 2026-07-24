@@ -1,37 +1,63 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
 
 import { echoApi } from '@/api/echo'
 import AppHeader from '@/components/AppHeader.vue'
-import type { SoulDialogue, SoulMatch, SoulMatchResult, SoulProfile } from '@/types'
+import type {
+  SoulDialogue,
+  SoulDialogueMessage,
+  SoulDialogueStreamEvent,
+  SoulMatch,
+  SoulMatchResult,
+  SoulProfile,
+} from '@/types'
 
 const DEMO_USER_ID = 'yeve'
-const SAVED_ECHO_KEY = 'echo.soul.saved'
 
 const profile = ref<SoulProfile | null>(null)
 const matchResult = ref<SoulMatchResult | null>(null)
 const selectedMatch = ref<SoulMatch | null>(null)
 const dialogue = ref<SoulDialogue | null>(null)
+const liveConversation = ref<SoulDialogueMessage[]>([])
+const liveEcho = ref('')
+const streamMeta = ref<Pick<SoulDialogue, 'agent_a' | 'agent_b' | 'score' | 'reason'> | null>(null)
+const dialogueSequence = ref<HTMLElement | null>(null)
+const history = ref<SoulDialogue[]>([])
+const expandedHistory = ref<Set<string>>(new Set())
+const pendingDeleteId = ref('')
+const deletingId = ref('')
+const deleteErrors = ref<Record<string, string>>({})
 
 const loadingProfile = ref(true)
 const refreshing = ref(false)
 const matching = ref(false)
 const colliding = ref(false)
-const saved = ref(false)
+const loadingHistory = ref(true)
+const dialoguePhase = ref<'idle' | 'connecting' | 'speaking' | 'summarizing' | 'saving' | 'complete' | 'error'>('idle')
 const profileError = ref('')
 const matchError = ref('')
 const dialogueError = ref('')
-const saveError = ref('')
+const historyError = ref('')
 let dialogueRequestId = 0
+let dialogueController: AbortController | null = null
 
-const sourceAgent = computed(() => profile.value?.name || 'Yeve')
-const targetAgent = computed(() => selectedMatch.value?.agent || '等待共鸣')
+const sourceAgent = computed(() => streamMeta.value?.agent_a || profile.value?.name || 'Yeve')
+const targetAgent = computed(() => streamMeta.value?.agent_b || selectedMatch.value?.agent || '等待共鸣')
+const visibleConversation = computed(() => dialogue.value?.conversation || liveConversation.value)
+const visibleEcho = computed(() => dialogue.value?.echo || liveEcho.value)
 const connectionState = computed(() => {
   if (colliding.value) return '碰撞中'
   if (dialogue.value) return '回响已形成'
   if (selectedMatch.value) return '已选择'
   if (matchResult.value) return '等待选择'
   return '尚未连接'
+})
+const dialogueStatus = computed(() => {
+  if (dialoguePhase.value === 'connecting') return '正在建立两端 Soul Agent 的连接...'
+  if (dialoguePhase.value === 'summarizing') return '三轮交流已完成，正在整理最终回响...'
+  if (dialoguePhase.value === 'saving') return '最终回响已形成，正在写入历史记录...'
+  const nextAgent = liveConversation.value.length % 2 === 0 ? sourceAgent.value : targetAgent.value
+  return `${nextAgent} 正在组织下一条表达...`
 })
 
 function errorMessage(error: unknown, fallback: string) {
@@ -41,6 +67,26 @@ function errorMessage(error: unknown, fallback: string) {
   return error.message
 }
 
+function resetDialogue() {
+  dialogue.value = null
+  liveConversation.value = []
+  liveEcho.value = ''
+  streamMeta.value = null
+  dialoguePhase.value = 'idle'
+}
+
+function mergeHistory(record: SoulDialogue) {
+  history.value = [record, ...history.value.filter((item) => item.id !== record.id)]
+}
+
+async function scrollDialogueToLatest() {
+  await nextTick()
+  const element = dialogueSequence.value
+  if (!element) return
+  const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+  element.scrollTo({ top: element.scrollHeight, behavior: reducedMotion ? 'auto' : 'smooth' })
+}
+
 async function loadProfile(refresh = false) {
   if (refresh && (matching.value || colliding.value)) return
   profileError.value = ''
@@ -48,8 +94,7 @@ async function loadProfile(refresh = false) {
     refreshing.value = true
     matchResult.value = null
     selectedMatch.value = null
-    dialogue.value = null
-    saved.value = false
+    resetDialogue()
   } else {
     loadingProfile.value = true
   }
@@ -67,14 +112,27 @@ async function loadProfile(refresh = false) {
   }
 }
 
+async function loadHistory() {
+  loadingHistory.value = true
+  historyError.value = ''
+  try {
+    const records = await echoApi.getSoulDialogues(DEMO_USER_ID)
+    history.value = dialogue.value
+      ? [dialogue.value, ...records.filter((item) => item.id !== dialogue.value?.id)]
+      : records
+  } catch (error) {
+    historyError.value = errorMessage(error, '暂时无法读取历史回响。')
+  } finally {
+    loadingHistory.value = false
+  }
+}
+
 async function findMatches() {
   matching.value = true
   matchError.value = ''
   dialogueError.value = ''
   selectedMatch.value = null
-  dialogue.value = null
-  saved.value = false
-  saveError.value = ''
+  resetDialogue()
 
   try {
     matchResult.value = await echoApi.matchSoulAgents(DEMO_USER_ID, 3)
@@ -86,45 +144,139 @@ async function findMatches() {
   }
 }
 
+function handleDialogueEvent(event: SoulDialogueStreamEvent, requestId: number, match: SoulMatch) {
+  if (requestId !== dialogueRequestId) return
+  if (event.type === 'start') {
+    streamMeta.value = event.data
+    dialoguePhase.value = 'speaking'
+    return
+  }
+  if (event.type === 'message') {
+    liveConversation.value = [...liveConversation.value, event.data]
+    dialoguePhase.value = liveConversation.value.length >= 6 ? 'summarizing' : 'speaking'
+    void scrollDialogueToLatest()
+    return
+  }
+  if (event.type === 'echo') {
+    liveEcho.value = event.data.echo
+    dialoguePhase.value = 'saving'
+    return
+  }
+  if (event.type === 'done' && streamMeta.value) {
+    const completed: SoulDialogue = {
+      id: event.data.dialogue_id,
+      user_id: DEMO_USER_ID,
+      target_user_id: match.user_id,
+      ...streamMeta.value,
+      conversation: [...liveConversation.value],
+      echo: liveEcho.value,
+      created_at: event.data.created_at,
+    }
+    dialogue.value = completed
+    dialoguePhase.value = 'complete'
+    mergeHistory(completed)
+    return
+  }
+  if (event.type === 'error') {
+    dialoguePhase.value = 'error'
+    dialogueError.value = event.data.message
+  }
+}
+
 async function startDialogue(match: SoulMatch) {
+  dialogueController?.abort()
+  const controller = new AbortController()
+  dialogueController = controller
   const requestId = ++dialogueRequestId
   selectedMatch.value = match
-  dialogue.value = null
+  resetDialogue()
   dialogueError.value = ''
-  saved.value = false
-  saveError.value = ''
   colliding.value = true
+  dialoguePhase.value = 'connecting'
 
   try {
-    const result = await echoApi.runSoulDialogue(DEMO_USER_ID, match.user_id)
+    await echoApi.streamSoulDialogue(
+      DEMO_USER_ID,
+      match.user_id,
+      (event) => handleDialogueEvent(event, requestId, match),
+      controller.signal,
+    )
     if (requestId !== dialogueRequestId) return
-    dialogue.value = result
+    if (!dialogue.value) throw new Error('实时对话没有返回完整的保存结果。')
   } catch (error) {
-    if (requestId !== dialogueRequestId) return
-    dialogueError.value = errorMessage(error, '这次灵魂碰撞没有形成回响，请重新尝试。')
+    if (requestId !== dialogueRequestId || (error instanceof DOMException && error.name === 'AbortError')) return
+    controller.abort()
+    dialoguePhase.value = 'error'
+    dialogueError.value = errorMessage(error, '这次灵魂碰撞没有形成完整回响，请重新尝试。')
   } finally {
-    if (requestId === dialogueRequestId) colliding.value = false
+    if (requestId === dialogueRequestId) {
+      colliding.value = false
+      if (dialogueController === controller) dialogueController = null
+    }
   }
 }
 
-function saveEcho() {
-  if (!dialogue.value) return
+function toggleHistory(id: string) {
+  const next = new Set(expandedHistory.value)
+  if (next.has(id)) next.delete(id)
+  else next.add(id)
+  expandedHistory.value = next
+}
 
-  saveError.value = ''
+function requestHistoryDelete(id: string) {
+  pendingDeleteId.value = id
+  const nextErrors = { ...deleteErrors.value }
+  delete nextErrors[id]
+  deleteErrors.value = nextErrors
+}
+
+function cancelHistoryDelete() {
+  pendingDeleteId.value = ''
+}
+
+async function deleteHistoryRecord(record: SoulDialogue) {
+  if (deletingId.value) return
+  deletingId.value = record.id
+  const nextErrors = { ...deleteErrors.value }
+  delete nextErrors[record.id]
+  deleteErrors.value = nextErrors
+
   try {
-    localStorage.setItem(SAVED_ECHO_KEY, JSON.stringify({
-      echo: dialogue.value.echo,
-      agent_a: dialogue.value.agent_a,
-      agent_b: dialogue.value.agent_b,
-      saved_at: new Date().toISOString(),
-    }))
-    saved.value = true
-  } catch {
-    saveError.value = '浏览器未能保存这次回响，请检查本地存储权限后重试。'
+    await echoApi.deleteSoulDialogue(record.id, DEMO_USER_ID)
+    history.value = history.value.filter((item) => item.id !== record.id)
+    const nextExpanded = new Set(expandedHistory.value)
+    nextExpanded.delete(record.id)
+    expandedHistory.value = nextExpanded
+    pendingDeleteId.value = ''
+    if (dialogue.value?.id === record.id) resetDialogue()
+  } catch (error) {
+    deleteErrors.value = {
+      ...deleteErrors.value,
+      [record.id]: errorMessage(error, '未能删除这条历史回响，请重新尝试。'),
+    }
+  } finally {
+    deletingId.value = ''
   }
 }
 
-onMounted(() => loadProfile())
+function formatDialogueTime(value: string) {
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return '时间未知'
+  return new Intl.DateTimeFormat('zh-CN', {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+  }).format(date)
+}
+
+onMounted(() => {
+  void loadProfile()
+  void loadHistory()
+})
+
+onBeforeUnmount(() => dialogueController?.abort())
 </script>
 
 <template>
@@ -136,7 +288,10 @@ onMounted(() => loadProfile())
         <p class="eyebrow">Agent-to-Agent Demo</p>
         <h1 id="soul-title">Soul Echo</h1>
       </div>
-      <p>让两个由长期表达形成的 Soul Agent 先相遇，再把它们共同听见的部分留给你。</p>
+      <div class="intro-copy">
+        <p>让两个由长期表达形成的 Soul Agent 先相遇，再把它们共同听见的部分留给你。</p>
+        <a href="#soul-history">查看历史回响</a>
+      </div>
     </section>
 
     <section class="soul-arena" aria-labelledby="arena-title">
@@ -252,7 +407,6 @@ onMounted(() => loadProfile())
               class="match-item"
               :class="{ selected: selectedMatch?.user_id === match.user_id }"
               type="button"
-              :disabled="colliding"
               @click="startDialogue(match)"
             >
               <span class="match-score">{{ match.score }}<small>%</small></span>
@@ -274,15 +428,24 @@ onMounted(() => loadProfile())
             </div>
           </div>
 
-          <p v-if="!selectedMatch" class="soul-state">选择一个共鸣 Agent 后，它们会按顺序进行一次公开碰撞。</p>
+          <p v-if="!selectedMatch" class="soul-state">选择一个共鸣 Agent 后，它们会轮流进行三轮公开碰撞。</p>
           <p v-else-if="colliding" class="soul-state collision-status" aria-live="polite">
-            {{ sourceAgent }} 正在表达，{{ targetAgent }} 正在回应...
+            {{ dialogueStatus }}
           </p>
-          <div v-else-if="dialogue" class="dialogue-sequence">
-            <article v-for="(message, index) in dialogue.conversation" :key="`${message.user_id}-${index}`">
+          <div
+            v-if="visibleConversation.length"
+            ref="dialogueSequence"
+            class="dialogue-sequence"
+            :class="{ 'is-live': colliding }"
+            aria-live="polite"
+          >
+            <article v-for="(message, index) in visibleConversation" :key="`${message.user_id}-${index}`">
               <span>{{ index + 1 }}</span>
               <div>
-                <h3>{{ message.from }}</h3>
+                <h3>
+                  {{ message.from }}
+                  <small v-if="message.round">第 {{ message.round }} 轮</small>
+                </h3>
                 <p>{{ message.text }}</p>
               </div>
             </article>
@@ -297,19 +460,107 @@ onMounted(() => loadProfile())
       </div>
     </section>
 
-    <section v-if="dialogue" class="echo-result" aria-labelledby="echo-title">
+    <section v-if="visibleEcho" class="echo-result" aria-labelledby="echo-title">
       <div class="echo-paper">
         <p class="eyebrow">Final Echo</p>
         <h2 id="echo-title">它们共同听见了</h2>
-        <blockquote>{{ dialogue.echo }}</blockquote>
+        <blockquote>{{ visibleEcho }}</blockquote>
         <footer>
-          <span>{{ dialogue.agent_a }} × {{ dialogue.agent_b }}</span>
-          <button class="primary-button soul-action" type="button" :disabled="saved" @click="saveEcho">
-            {{ saved ? '已保存' : '保存回响' }}
-          </button>
+          <span>{{ sourceAgent }} × {{ targetAgent }}</span>
+          <strong class="auto-save-status">
+            {{ dialogue ? '已自动保存到历史回响' : '正在保存历史回响' }}
+          </strong>
         </footer>
-        <p v-if="saveError" class="soul-error save-error" role="alert">{{ saveError }}</p>
       </div>
+    </section>
+
+    <section id="soul-history" class="history-section" aria-labelledby="history-title" :aria-busy="loadingHistory">
+      <div class="history-heading">
+        <div>
+          <p class="eyebrow">Echo Archive</p>
+          <h2 id="history-title">历史回响</h2>
+        </div>
+        <button class="quiet-button" type="button" :disabled="loadingHistory" @click="loadHistory">
+          {{ loadingHistory ? '读取中' : '重新读取' }}
+        </button>
+      </div>
+
+      <p v-if="loadingHistory && !history.length" class="soul-state">正在从服务端读取已经完成的回响...</p>
+      <div v-else-if="historyError && !history.length" class="soul-error" role="alert">
+        <p>{{ historyError }}</p>
+        <button class="quiet-button" type="button" @click="loadHistory">重新读取</button>
+      </div>
+      <p v-else-if="!history.length" class="history-empty">完成第一次三轮碰撞后，完整对话会自动出现在这里。</p>
+
+      <div v-else class="history-list">
+        <article v-for="record in history" :key="record.id" class="history-record">
+          <div class="history-record-row">
+            <button
+              class="history-summary"
+              type="button"
+              :aria-expanded="expandedHistory.has(record.id)"
+              :aria-controls="`history-${record.id}`"
+              @click="toggleHistory(record.id)"
+            >
+              <span class="history-agents">{{ record.agent_a }} × {{ record.agent_b }}</span>
+              <time :datetime="record.created_at">{{ formatDialogueTime(record.created_at) }}</time>
+              <span class="history-echo">{{ record.echo }}</span>
+              <span class="history-score">共鸣度 {{ record.score }}%</span>
+              <span class="history-toggle">
+                {{ expandedHistory.has(record.id) ? '收起对话' : '查看对话' }}
+                <i aria-hidden="true">⌄</i>
+              </span>
+            </button>
+            <button
+              class="history-delete"
+              type="button"
+              :aria-label="`删除 ${record.agent_a} 与 ${record.agent_b} 的历史回响`"
+              title="永久删除"
+              :disabled="deletingId === record.id || loadingHistory"
+              @click="requestHistoryDelete(record.id)"
+            >
+              ×
+            </button>
+          </div>
+
+          <div v-if="pendingDeleteId === record.id" class="delete-confirm" role="alert">
+            <p>将永久删除完整对话和最终回响，此操作无法恢复。</p>
+            <div>
+              <button class="quiet-button" type="button" :disabled="deletingId === record.id" @click="cancelHistoryDelete">
+                取消
+              </button>
+              <button
+                class="delete-confirm-button"
+                type="button"
+                :disabled="deletingId === record.id"
+                @click="deleteHistoryRecord(record)"
+              >
+                {{ deletingId === record.id ? '删除中' : '确认删除' }}
+              </button>
+            </div>
+          </div>
+          <p v-if="deleteErrors[record.id]" class="delete-error" role="alert">{{ deleteErrors[record.id] }}</p>
+
+          <div v-if="expandedHistory.has(record.id)" :id="`history-${record.id}`" class="history-detail">
+            <div class="history-dialogue">
+              <article v-for="(message, index) in record.conversation" :key="`${record.id}-${index}`">
+                <span>{{ index + 1 }}</span>
+                <div>
+                  <h3>
+                    {{ message.from }}
+                    <small v-if="message.round">第 {{ message.round }} 轮</small>
+                  </h3>
+                  <p>{{ message.text }}</p>
+                </div>
+              </article>
+            </div>
+            <blockquote>{{ record.echo }}</blockquote>
+          </div>
+        </article>
+      </div>
+      <p v-if="historyError && history.length" class="soul-error history-inline-error" role="alert">
+        {{ historyError }} 当前仍显示上一次读取的记录。
+      </p>
     </section>
   </main>
 </template>
@@ -327,7 +578,8 @@ onMounted(() => loadProfile())
 .soul-intro,
 .soul-arena,
 .soul-workspace,
-.echo-result {
+.echo-result,
+.history-section {
   width: min(1040px, calc(100% - 48px));
   margin-inline: auto;
 }
@@ -350,10 +602,22 @@ onMounted(() => loadProfile())
   line-height: .95;
 }
 
-.soul-intro > p {
+.intro-copy {
+  display: grid;
+  justify-items: start;
+  gap: 18px;
+}
+
+.intro-copy p {
   margin: 0;
   color: #aec6c0;
   line-height: 1.8;
+}
+
+.intro-copy a {
+  color: #e2ca82;
+  font-size: 13px;
+  text-underline-offset: 5px;
 }
 
 .soul-arena {
@@ -371,7 +635,8 @@ onMounted(() => loadProfile())
 
 .arena-heading h2,
 .section-title-row h2,
-.echo-paper h2 {
+.echo-paper h2,
+.history-heading h2 {
   margin: 0;
   color: #f5ead2;
   font-family: Georgia, "Songti SC", serif;
@@ -717,6 +982,13 @@ onMounted(() => loadProfile())
   margin-top: 28px;
 }
 
+.dialogue-sequence.is-live {
+  max-height: 470px;
+  padding-right: 10px;
+  overflow-y: auto;
+  scrollbar-color: #52766f transparent;
+}
+
 .dialogue-sequence article {
   display: grid;
   grid-template-columns: 32px 1fr;
@@ -754,6 +1026,15 @@ onMounted(() => loadProfile())
   color: #ebd48e;
   font-family: Georgia, "Songti SC", serif;
   font-size: 17px;
+  font-weight: 400;
+}
+
+.dialogue-sequence h3 small,
+.history-dialogue h3 small {
+  margin-left: 8px;
+  color: #7f9e97;
+  font-family: inherit;
+  font-size: 10px;
   font-weight: 400;
 }
 
@@ -801,9 +1082,239 @@ onMounted(() => loadProfile())
   font-size: 12px;
 }
 
-.save-error {
-  margin-bottom: 0;
-  color: #9a4e49;
+.auto-save-status {
+  color: #52766e;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.history-section {
+  padding-top: 84px;
+  scroll-margin-top: 24px;
+}
+
+.history-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 24px;
+  padding-bottom: 22px;
+  border-bottom: 1px solid #456068;
+}
+
+.history-heading .eyebrow {
+  margin-bottom: 7px;
+}
+
+.history-empty {
+  margin: 30px 0 0;
+  padding: 28px 0;
+  border-bottom: 1px solid #29464f;
+  color: #8fa9a3;
+  line-height: 1.7;
+}
+
+.history-list {
+  display: grid;
+}
+
+.history-record {
+  border-bottom: 1px solid #34525a;
+}
+
+.history-record-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 38px;
+  align-items: center;
+  gap: 8px;
+}
+
+.history-summary {
+  width: 100%;
+  display: grid;
+  grid-template-columns: minmax(150px, .75fr) minmax(0, 2fr) auto;
+  gap: 9px 24px;
+  align-items: center;
+  padding: 24px 4px;
+  border: 0;
+  border-radius: 0;
+  color: inherit;
+  background: transparent;
+  text-align: left;
+}
+
+.history-summary:hover {
+  background: rgba(102, 143, 136, .07);
+}
+
+.history-delete {
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  border: 1px solid #526d70;
+  border-radius: 50%;
+  color: #a8bbb7;
+  background: transparent;
+  font-family: Arial, sans-serif;
+  font-size: 21px;
+  line-height: 1;
+}
+
+.history-delete:hover:not(:disabled) {
+  border-color: #c98278;
+  color: #f0aaa0;
+  background: rgba(174, 83, 75, .08);
+}
+
+.history-agents {
+  color: #f0dc9d;
+  font-family: Georgia, "Songti SC", serif;
+  font-size: 18px;
+}
+
+.history-summary time {
+  grid-column: 1;
+  color: #76958e;
+  font-size: 11px;
+}
+
+.history-echo {
+  grid-column: 2;
+  grid-row: 1 / span 2;
+  display: -webkit-box;
+  overflow: hidden;
+  color: #c9d9d4;
+  line-height: 1.65;
+  white-space: pre-line;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.history-score {
+  grid-column: 3;
+  grid-row: 1;
+  color: #8fb0a8;
+  font-size: 11px;
+}
+
+.history-toggle {
+  grid-column: 3;
+  grid-row: 2;
+  color: #d8c27f;
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.history-toggle i {
+  display: inline-block;
+  margin-left: 5px;
+  font-style: normal;
+  transition: transform .2s ease;
+}
+
+.history-summary[aria-expanded="true"] .history-toggle i {
+  transform: rotate(180deg);
+}
+
+.delete-confirm {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  margin: 0 46px 22px 4px;
+  padding: 16px 18px;
+  border-left: 3px solid #bd776d;
+  color: #d8c8c3;
+  background: rgba(128, 57, 52, .16);
+}
+
+.delete-confirm p {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.delete-confirm > div {
+  display: flex;
+  flex: none;
+  gap: 8px;
+}
+
+.delete-confirm-button {
+  min-height: 34px;
+  padding: 0 11px;
+  border: 1px solid #c98278;
+  border-radius: 3px;
+  color: #ffe7e1;
+  background: #7f3f3b;
+}
+
+.delete-confirm-button:hover:not(:disabled) {
+  background: #92504a;
+}
+
+.delete-error {
+  margin: 0 46px 20px 4px;
+  color: #efaaa0;
+  font-size: 12px;
+}
+
+.history-detail {
+  padding: 4px 0 34px min(11vw, 112px);
+}
+
+.history-dialogue {
+  display: grid;
+}
+
+.history-dialogue article {
+  display: grid;
+  grid-template-columns: 28px 1fr;
+  gap: 14px;
+  padding: 0 0 22px;
+}
+
+.history-dialogue article > span {
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  border: 1px solid #55766f;
+  border-radius: 50%;
+  color: #d9c47f;
+  font-family: Georgia, serif;
+  font-size: 11px;
+}
+
+.history-dialogue h3 {
+  margin: 1px 0 7px;
+  color: #dfca89;
+  font-family: Georgia, "Songti SC", serif;
+  font-size: 15px;
+  font-weight: 400;
+}
+
+.history-dialogue p {
+  margin: 0;
+  color: #b8ccc6;
+  font-size: 14px;
+  line-height: 1.75;
+}
+
+.history-detail > blockquote {
+  margin: 6px 0 0 42px;
+  padding: 20px 22px;
+  border-left: 3px solid #c4aa65;
+  color: #2c4749;
+  background: #e7ebe2;
+  font-family: Georgia, "Songti SC", serif;
+  line-height: 1.75;
+  white-space: pre-line;
+}
+
+.history-inline-error {
+  margin-top: 20px;
 }
 
 button:focus-visible {
@@ -838,7 +1349,8 @@ button:focus-visible {
   .soul-intro,
   .soul-arena,
   .soul-workspace,
-  .echo-result {
+  .echo-result,
+  .history-section {
     width: calc(100% - 32px);
   }
 
@@ -900,12 +1412,80 @@ button:focus-visible {
     align-items: flex-start;
     flex-direction: column;
   }
+
+  .history-summary {
+    grid-template-columns: 1fr auto;
+    gap: 8px 14px;
+    padding: 21px 2px;
+  }
+
+  .history-agents,
+  .history-summary time,
+  .history-echo {
+    grid-column: 1 / -1;
+  }
+
+  .history-agents {
+    grid-row: auto;
+  }
+
+  .history-summary time {
+    grid-row: auto;
+  }
+
+  .history-echo {
+    grid-row: auto;
+  }
+
+  .history-score,
+  .history-toggle {
+    grid-row: auto;
+  }
+
+  .history-score {
+    grid-column: 1;
+  }
+
+  .history-toggle {
+    grid-column: 2;
+  }
+
+  .history-detail {
+    padding-left: 0;
+  }
+
+  .history-record-row {
+    grid-template-columns: minmax(0, 1fr) 34px;
+    gap: 4px;
+  }
+
+  .delete-confirm {
+    align-items: stretch;
+    flex-direction: column;
+    margin-right: 38px;
+  }
+
+  .delete-confirm > div {
+    justify-content: flex-end;
+  }
+
+  .delete-error {
+    margin-right: 38px;
+  }
+
+  .history-detail > blockquote {
+    margin-left: 0;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
   .link-line i,
   .collision-status::after {
     animation: none;
+  }
+
+  .history-toggle i {
+    transition: none;
   }
 }
 </style>

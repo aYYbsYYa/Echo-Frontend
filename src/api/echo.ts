@@ -1,6 +1,7 @@
 import type {
   EchoItem,
   SoulDialogue,
+  SoulDialogueStreamEvent,
   SoulMatchResult,
   SoulProfile,
   UserProfile,
@@ -43,6 +44,62 @@ async function requestEnvelope<T>(path: string, options: RequestInit = {}): Prom
 async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   const body = await requestEnvelope<T>(path, options)
   return body.data
+}
+
+async function streamSoulDialogue(
+  userId: string,
+  targetUserId: string | undefined,
+  onEvent: (event: SoulDialogueStreamEvent) => void,
+  signal?: AbortSignal,
+): Promise<void> {
+  if (!baseUrl) throw new Error('未配置 VITE_API_BASE_URL。')
+  const response = await fetch(`${baseUrl}/agent/dialogue/stream`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      user_id: userId,
+      ...(targetUserId ? { target_user_id: targetUserId } : {}),
+    }),
+    signal,
+  })
+  if (!response.ok) {
+    const body = await response.json().catch(() => null)
+    throw new Error(body?.error?.message || '实时对话请求未能完成。')
+  }
+  if (!response.body) throw new Error('浏览器无法读取实时对话。')
+
+  const reader = response.body.getReader()
+  const decoder = new TextDecoder()
+  let buffer = ''
+  let completed = false
+
+  const consumeLine = (line: string) => {
+    if (!line.trim()) return
+    let event: SoulDialogueStreamEvent
+    try {
+      event = JSON.parse(line) as SoulDialogueStreamEvent
+    } catch {
+      throw new Error('实时对话响应格式异常。')
+    }
+    onEvent(event)
+    if (event.type === 'error') throw new Error(event.data.message)
+  }
+
+  try {
+    while (true) {
+      const { done, value } = await reader.read()
+      buffer += decoder.decode(value, { stream: !done })
+      const lines = buffer.split('\n')
+      buffer = lines.pop() || ''
+      for (const line of lines) consumeLine(line)
+      if (done) break
+    }
+    consumeLine(buffer)
+    completed = true
+  } finally {
+    if (!completed) await reader.cancel().catch(() => undefined)
+    reader.releaseLock()
+  }
 }
 
 export const echoApi = {
@@ -109,6 +166,14 @@ export const echoApi = {
         ...(targetUserId ? { target_user_id: targetUserId } : {}),
       }),
     }),
+  streamSoulDialogue,
+  getSoulDialogues: (userId = 'yeve') =>
+    request<SoulDialogue[]>(`/agent/dialogues?user_id=${encodeURIComponent(userId)}`),
+  deleteSoulDialogue: (dialogueId: string, userId = 'yeve') =>
+    request<{ id: string; deleted: boolean }>(
+      `/agent/dialogues/${encodeURIComponent(dialogueId)}?user_id=${encodeURIComponent(userId)}`,
+      { method: 'DELETE' },
+    ),
   transcribeRingAudio: async (audio: Uint8Array): Promise<string> => {
     if (!baseUrl) throw new Error('未配置 VITE_API_BASE_URL。')
     const form = new FormData()

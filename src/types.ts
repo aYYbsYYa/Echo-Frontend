@@ -69,6 +69,7 @@ export interface SoulMatchResult {
 }
 
 export interface SoulDialogueMessage {
+  round?: number
   from: string
   user_id: string
   text: string
@@ -76,6 +77,8 @@ export interface SoulDialogueMessage {
 
 export interface SoulDialogue {
   id: string
+  user_id?: string
+  target_user_id?: string
   agent_a: string
   agent_b: string
   score: number
@@ -84,3 +87,13 @@ export interface SoulDialogue {
   echo: string
   created_at: string
 }
+
+export type SoulDialogueStreamEvent =
+  | {
+      type: 'start'
+      data: Pick<SoulDialogue, 'agent_a' | 'agent_b' | 'score' | 'reason'>
+    }
+  | { type: 'message'; data: SoulDialogueMessage }
+  | { type: 'echo'; data: { echo: string } }
+  | { type: 'done'; data: { dialogue_id: string; created_at: string } }
+  | { type: 'error'; data: { message: string } }
