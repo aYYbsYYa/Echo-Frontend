@@ -12,6 +12,7 @@ export interface UserProfile {
 export interface EchoItem {
   id: string
   content: string
+  image_url?: string | null
   nickname: string
   avatar: string
   region: string

@@ -2,7 +2,7 @@
 import { onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
-import { echoApi } from '@/api/echo'
+import { echoApi, resolveMediaUrl } from '@/api/echo'
 import AppHeader from '@/components/AppHeader.vue'
 import { useUserStore } from '@/stores/user'
 import type { EchoItem } from '@/types'
@@ -57,6 +57,7 @@ onMounted(load)
     <button class="back-button" type="button" @click="router.back()">返回海面</button>
     <article v-if="item" class="bottle-letter">
       <div class="letter-meta"><span>{{ item.avatar }} {{ item.nickname }}</span><span>{{ item.region }}</span></div>
+      <img v-if="item.image_url" class="letter-image" :src="resolveMediaUrl(item.image_url)" alt="漂流瓶中的图片" />
       <p class="letter-content">{{ item.content }}</p>
       <p class="letter-date">{{ formatDriftDuration(item.created_at) }}</p>
       <div v-if="!item.is_author" class="letter-actions">

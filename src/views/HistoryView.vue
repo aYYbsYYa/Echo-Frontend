@@ -34,9 +34,10 @@ onMounted(async () => {
   <main class="archive-shell">
     <AppHeader />
     <section class="archive-heading">
-      <p class="eyebrow">{{ user.profile?.nickname }} 的印记</p>
-      <h1>离开之后，<br />仍在世界某处。</h1>
-      <p>你投出的文字无法收回，但它们在这里留下了被停留过的痕迹。</p>
+      <p class="eyebrow">{{ user.profile?.nickname }} 的漂流年表</p>
+      <h1>离开之后，<br /><em>仍在世界某处。</em></h1>
+      <p>你投出的文字无法收回，但时间替它们留下了漂流、抵达与被停留过的痕迹。</p>
+      <div class="archive-summary"><span><b>{{ bottles.length + planes.length }}</b> 次出发</span><span><b>{{ bottles.reduce((sum, item) => sum + item.views, 0) + planes.reduce((sum, item) => sum + item.views, 0) }}</b> 次停留</span></div>
     </section>
     <p v-if="error" class="form-error archive-error">{{ error }}</p>
     <div class="archive-grid">

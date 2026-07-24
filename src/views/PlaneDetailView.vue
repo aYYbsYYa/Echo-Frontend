@@ -2,7 +2,7 @@
 import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
-import { echoApi } from '@/api/echo'
+import { echoApi, resolveMediaUrl } from '@/api/echo'
 import AppHeader from '@/components/AppHeader.vue'
 import { useUserStore } from '@/stores/user'
 import type { EchoItem } from '@/types'
@@ -64,6 +64,7 @@ onMounted(load)
         <span>⌁ 纸飞机</span>
         <span>{{ sceneLabel }}</span>
       </header>
+      <img v-if="item.image_url" class="plane-image" :src="resolveMediaUrl(item.image_url)" alt="纸飞机带来的图片" />
       <p class="plane-content">{{ item.content }}</p>
       <p class="plane-date">{{ formatFlightDuration(item.created_at) }}</p>
       <div v-if="!item.is_author" class="plane-actions">
@@ -92,177 +93,3 @@ onMounted(load)
     <p v-else class="quiet-state">正在打开纸飞机...</p>
   </main>
 </template>
-
-<style scoped>
-.plane-detail-shell {
-  min-height: 100vh;
-  padding-bottom: 80px;
-  background: #101e28;
-}
-
-.plane-back-button {
-  display: block;
-  width: min(780px, calc(100% - 48px));
-  margin: 45px auto 18px;
-  padding: 0;
-  border: 0;
-  color: #aac5bd;
-  background: none;
-  text-align: left;
-  font-size: 13px;
-}
-
-.plane-letter {
-  width: min(780px, calc(100% - 48px));
-  min-height: 420px;
-  margin: auto;
-  padding: clamp(30px, 7vw, 72px);
-  border-top: 5px solid #d8c77b;
-  color: #f5f0df;
-  background: #28372f;
-  box-shadow: 16px 18px 0 rgba(0, 0, 0, .12);
-}
-
-.plane-letter.scene-sky { background: #284150; }
-.plane-letter.scene-window { background: #39413b; }
-.plane-letter.scene-tree { background: #28372f; }
-
-.plane-letter-header,
-.plane-letter-footer {
-  display: flex;
-  justify-content: space-between;
-  gap: 18px;
-  color: #c1d1c5;
-  font-size: 13px;
-}
-
-.plane-content {
-  max-width: 620px;
-  margin: 72px 0;
-  font-family: Georgia, "Songti SC", serif;
-  font-size: clamp(26px, 4vw, 40px);
-  line-height: 1.6;
-  white-space: pre-wrap;
-}
-
-.plane-views {
-  margin-top: 24px;
-  color: #93aaa2;
-  font-size: 13px;
-}
-
-.plane-date {
-  margin: 0 0 28px;
-  color: #c1d1c5;
-  font-size: 13px;
-}
-
-.plane-actions {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 10px;
-  margin-bottom: 34px;
-}
-
-.plane-actions button,
-.plane-actions input {
-  min-height: 36px;
-  padding: 0 11px;
-  border: 1px solid #82978d;
-  border-radius: 3px;
-  background: transparent;
-  color: #e4eee7;
-}
-
-.plane-actions button.selected {
-  background: #d9be76;
-  border-color: #d9be76;
-  color: #263d42;
-}
-
-.plane-actions form {
-  display: flex;
-  gap: 6px;
-}
-
-.plane-actions input {
-  width: 175px;
-}
-
-.plane-actions .report-button {
-  margin-left: auto;
-  color: #e6aaa0;
-  border-color: transparent;
-}
-
-.plane-author-insight {
-  margin-top: 34px;
-  padding-top: 25px;
-  border-top: 1px solid rgba(196, 205, 194, .35);
-}
-
-.plane-author-insight > p {
-  color: #c1d1c5;
-}
-
-.plane-comments h2 {
-  font-size: 14px;
-  font-weight: 600;
-}
-
-.plane-comment-entry {
-  padding: 11px 0;
-  border-bottom: 1px solid rgba(204, 212, 202, .25);
-}
-
-.plane-comment-entry p {
-  margin: 0;
-}
-
-.plane-comment-entry .plane-comment-meta {
-  padding-bottom: 5px;
-  color: #a8c0ba;
-  font-size: 12px;
-}
-
-.plane-reply {
-  margin: 0 0 36px;
-  padding: 16px;
-  border-left: 3px solid #d8c77b;
-  color: #e2eadf;
-  white-space: pre-line;
-  line-height: 1.7;
-}
-
-.plane-reply-pending {
-  margin: 0 0 36px;
-  color: #93aaa2;
-  font-size: 13px;
-}
-
-.plane-error {
-  width: min(780px, calc(100% - 48px));
-  margin: 40px auto;
-}
-
-@media (max-width: 680px) {
-  .plane-letter-header,
-  .plane-letter-footer {
-    align-items: flex-start;
-    flex-direction: column;
-  }
-
-  .plane-actions form {
-    width: 100%;
-  }
-
-  .plane-actions input {
-    flex: 1;
-  }
-
-  .plane-actions .report-button {
-    margin-left: 0;
-  }
-}
-</style>
