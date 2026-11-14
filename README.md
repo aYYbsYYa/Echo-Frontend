@@ -199,7 +199,7 @@ npm run preview
 
 ## 六、开发记录与仓库
 
-- 提交总数 15 次，时间跨度 2026-07-23 ~ 2026-07-24，完整历史保留在 `main` 分支。
+- 原项目开发提交 15 次，时间跨度 2026-07-23 ~ 2026-07-24；2026-11-14 另增加 1 次赛项文档重写提交，`main` 分支共 16 次提交，完整历史未做压缩或改写。
 - 主要演进：项目初始化 → 用户匿名初始化与环境变量 → 漂流瓶/纸飞机发布与发现 → 点赞与评论 → 图片上传与内嵌详情 → 戒指语音转文字 → Soul Echo API → Agent 对话实时流。
 - 关联仓库：[Echo-Frontend-v2](https://github.com/aYYbsYYa/Echo-Frontend-v2)（第二代前端）、[Echo-Backtend](https://github.com/aYYbsYYa/Echo-Backtend)（服务端）。
 
