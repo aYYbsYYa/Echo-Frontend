@@ -188,10 +188,13 @@ npm run preview
 
 | 贡献者 | 分工 |
 | :--- | :--- |
-| aYYbsYYa | 前后端开发 |
+| aYYbsYYa（邓紫阳） | 前后端开发 |
 | Speculator | 前后端开发 |
 | Naije | 设计 |
 | 是晞宝呀 | 设计 |
+
+> 署名口径备注：**aYYbsYYa 即本次参赛队长邓紫阳本人**，本仓库 Git 提交作者记录为 handle，
+> 上方「本次参赛队伍」表记录为真实姓名，两者指代同一人；其余三位贡献者暂未提供真实姓名，保持 handle 署名。
 
 本仓库的 Git 提交记录（作者 `aYYbsYYa`、`Speculator`）保留了原项目的真实开发过程。
 
