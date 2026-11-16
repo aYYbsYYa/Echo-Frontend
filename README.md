@@ -4,7 +4,7 @@
 
 Yeve Echo 是一款以「反转社交范式」为核心的情绪表达 Web 应用：它剥离公开的点赞数、评论列表与好友动态，让表达回到「人与内容」本身。本仓库是它的**第一代前端（v1）**，基于 Vue 3 + Vite + TypeScript 实现，覆盖漂流瓶（浮笺）、纸飞机（飞笺）与 Soul Echo（Agent to Agent）三条主链路，并包含一条智能戒指语音输入的硬件链路。
 
-- 在线演示：<https://echo.yeve.top>（当前由 [Echo-Frontend-v2](https://github.com/aYYbsYYa/Echo-Frontend-v2) 提供）
+- 在线演示：<https://echo.yyoo.fun>（当前由 [Echo-Frontend-v2](https://github.com/aYYbsYYa/Echo-Frontend-v2) 提供）
 - 服务端：<https://github.com/aYYbsYYa/Echo-Backtend>
 - 第二代前端：<https://github.com/aYYbsYYa/Echo-Frontend-v2>
 
